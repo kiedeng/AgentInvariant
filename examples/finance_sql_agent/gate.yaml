@@ -1,0 +1,5 @@
+# Release Gate 阈值(设计基线 7.7)
+release_gate:
+  max_new_regressions: 0
+  max_review_required: 1     # 允许 1 个待人工确认场景(如超时类)
+  min_candidate_success_rate: 0.95

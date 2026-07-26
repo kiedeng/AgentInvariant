@@ -1,0 +1,34 @@
+# AgentInvariant 项目配置(附录 A.1 的实现)
+name: finance-agent
+
+baseline:
+  entrypoint: examples.finance_sql_agent.adapter:run_v1
+  version: v1.3.0
+
+candidate:
+  entrypoint: examples.finance_sql_agent.adapter:run_v2
+  version: v1.4.0
+
+tools: examples.finance_sql_agent.tools:ALL_TOOLS
+state_provider: examples.finance_sql_agent.state:state_provider
+
+dataset: datasets/finance.yaml
+fixtures: .agentinvariant/fixtures/finance.json
+fixture_mask_fields: [id_card, password]  # Fixture 落盘前掩码的敏感字段
+output_dir: .agentinvariant
+gate: gate.yaml
+
+# 默认工具策略(场景可按 A.2 语义覆盖);未声明的工具一律 blocked
+policies:
+  check_permission: {mode: live, effect: READ_ONLY}
+  execute_sql: {mode: replay, effect: WRITE_REVERSIBLE, guard: sql_readonly}
+  send_email: {mode: blocked, effect: EXTERNAL_COMMUNICATION}
+
+runner:
+  timeout_s: 30
+  repeat: 1
+
+otlp:
+  enabled: false
+  endpoint: null        # 例: http://localhost:6006/v1/traces (Phoenix)
+  record_content: false # 隐私默认:不导出参数与结果内容

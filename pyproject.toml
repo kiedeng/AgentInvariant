@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentinvariant"
+version = "0.2.0"
+description = "Execution virtualization and release assurance engine for production AI agents"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "kiedeng" }]
+keywords = ["ai-agent", "regression-testing", "release-gate", "llm", "langgraph", "tool-virtualization"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2",
+    "langchain-core>=0.3",
+    "langgraph>=0.2",
+    "pyyaml>=6",
+    "opentelemetry-sdk>=1.25",
+    "opentelemetry-exporter-otlp-proto-http>=1.25",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+agentinvariant = "agentinvariant.cli:main"
+
+[project.urls]
+Repository = "https://github.com/kiedeng/AgentInvariant"
+Changelog = "https://github.com/kiedeng/AgentInvariant/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/kiedeng/AgentInvariant/tree/main/docs"
+
+[tool.setuptools.packages.find]
+where = ["packages/core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

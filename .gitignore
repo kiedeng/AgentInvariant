@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+packages/core/*.egg-info/
+
+# 本地运行产物(Fixture 可能含敏感数据,默认不入库)
+.agentinvariant/
