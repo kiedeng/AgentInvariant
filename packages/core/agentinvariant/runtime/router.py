@@ -11,6 +11,7 @@ live / mock / replay / blocked / record 五种模式,Agent 代码本身零改动
 from __future__ import annotations
 
 import json
+import time
 from enum import Enum
 from typing import Any, Callable
 
@@ -43,8 +44,11 @@ class ToolPolicy(BaseModel):
     mode: ExecutionMode
     effect: ToolEffect = ToolEffect.READ_ONLY
     mock_result: Any = None
+    # 模拟延迟(仅 mock/replay 生效):复现慢工具、验证超时隔离与延迟预算
+    latency_ms: float = 0
     # 参数守卫:返回 None 表示放行,返回字符串表示违规原因并阻断执行。
-    # 这是过程不变量(argument_constraint)的最小预览,正式版归 Contract Engine。
+    # 与 Contract Engine 的 argument_constraint 同源(matchers 注册表),
+    # 守卫在执行前阻断,契约在事后取证。
     argument_guard: Callable[[dict[str, Any]], str | None] | None = None
 
 
@@ -84,6 +88,7 @@ class VirtualTool(BaseTool):
     def _run(self, **kwargs: Any) -> str:
         policy = self._policy
         event = self._recorder.record(self.name, kwargs, policy.mode.value)
+        event.effect = policy.effect.value
 
         if policy.mode is ExecutionMode.BLOCKED:
             event.violation = "tool blocked by policy"
@@ -96,6 +101,9 @@ class VirtualTool(BaseTool):
                 event.violation = reason
                 event.error = "argument_guard"
                 return _to_content({"error": f"工具 {self.name} 参数违反策略: {reason},未执行。"})
+
+        if policy.latency_ms and policy.mode in (ExecutionMode.MOCK, ExecutionMode.REPLAY):
+            time.sleep(policy.latency_ms / 1000)
 
         if policy.mode is ExecutionMode.MOCK:
             event.result = policy.mock_result

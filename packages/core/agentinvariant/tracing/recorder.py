@@ -19,6 +19,7 @@ class ToolCallEvent:
     result: Any = None
     error: str | None = None
     violation: str | None = None
+    effect: str = "READ_ONLY"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -29,6 +30,7 @@ class ToolCallEvent:
             "result": self.result,
             "error": self.error,
             "violation": self.violation,
+            "effect": self.effect,
         }
 
 

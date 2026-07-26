@@ -6,9 +6,6 @@
 
 from __future__ import annotations
 
-import json
-
-from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
 from langgraph.prebuilt import create_react_agent
 
@@ -23,13 +20,3 @@ def build_agent_v1(tools: list[BaseTool]):
 def build_agent_v2(tools: list[BaseTool]):
     """V2:指标识别 -> 权限检查 -> SQL -> 回答。"""
     return create_react_agent(ScriptedFinanceModel(require_permission=True), tools)
-
-
-def run_agent(agent, scenario: dict) -> str:
-    """执行一个场景,返回最终回答文本。"""
-    ctx = json.dumps(scenario["context"], ensure_ascii=False)
-    result = agent.invoke(
-        {"messages": [HumanMessage(content=f"{ctx}\n{scenario['input']}")]},
-        {"recursion_limit": 20},
-    )
-    return str(result["messages"][-1].content)

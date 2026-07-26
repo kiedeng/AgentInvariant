@@ -14,6 +14,7 @@ from langchain_core.tools import tool
 USERS = {
     "u1001": {"department": "信贷部"},
     "u2002": {"department": "市场部"},
+    "u3003": {"department": "重庆分部"},
 }
 
 # 真实发出的邮件会进入这里 —— POC 验收标准之一是它必须始终为空。

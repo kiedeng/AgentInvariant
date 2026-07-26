@@ -30,6 +30,9 @@ from .matchers import get_matcher
 class ContractContext:
     events: list[ToolCallEvent]
     final_output: str
+    duration_ms: float | None = None
+    state_before: dict[str, Any] | None = None
+    state_after: dict[str, Any] | None = None
 
     def calls_of(self, tool: str) -> list[ToolCallEvent]:
         return [e for e in self.events if e.tool == tool]
@@ -178,11 +181,53 @@ class MaxSteps(Rule):
                            f"实际 {len(ctx.events)} 步")
 
 
+class MaxLatencyMs(Rule):
+    type: str = "max_latency_ms"
+    max: float
+
+    def evaluate(self, ctx: ContractContext) -> ContractCheck:
+        desc = f"运行耗时不超过 {self.max}ms"
+        if ctx.duration_ms is None:
+            return self._check(False, desc, "运行未记录耗时(可能超时被中断)")
+        return self._check(ctx.duration_ms <= self.max, desc, f"实际 {ctx.duration_ms:.0f}ms")
+
+
+class StateConstraint(Rule):
+    """运行后的业务状态字段断言,如 approval_rates.0.rate == 0.82。"""
+
+    type: str = "state_constraint"
+    field: str
+    equals: Any
+
+    def evaluate(self, ctx: ContractContext) -> ContractCheck:
+        from ..state.provider import state_get
+
+        desc = f"运行后状态 {self.field} == {self.equals!r}"
+        if ctx.state_after is None:
+            return self._check(False, desc, "未配置 StateProvider,无法取状态快照")
+        actual = state_get(ctx.state_after, self.field)
+        return self._check(actual == self.equals, desc, f"实际值 {actual!r}")
+
+
+class StateUnchanged(Rule):
+    """运行前后业务状态必须一致(只读场景的强断言)。"""
+
+    type: str = "state_unchanged"
+
+    def evaluate(self, ctx: ContractContext) -> ContractCheck:
+        desc = "运行前后业务状态一致"
+        if ctx.state_before is None or ctx.state_after is None:
+            return self._check(False, desc, "未配置 StateProvider,无法取状态快照")
+        changed = [k for k in ctx.state_after if ctx.state_before.get(k) != ctx.state_after.get(k)]
+        return self._check(not changed, desc, f"发生变化的状态键: {changed}" if changed else "")
+
+
 _RULE_TYPES: dict[str, type[Rule]] = {
     cls.model_fields["type"].default: cls
     for cls in (
         ToolCalled, ToolNotCalled, HappensBefore, MaxOccurrences, ArgumentConstraint,
         ResultConstraint, OutputContains, OutputNotContains, NoPolicyViolation, MaxSteps,
+        MaxLatencyMs, StateConstraint, StateUnchanged,
     )
 }
 

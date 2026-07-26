@@ -17,8 +17,18 @@ def sql_readonly(args: dict[str, Any]) -> str | None:
     return None if sql.startswith("SELECT") else "SQL 仅允许 SELECT(sql_readonly)"
 
 
+_SENSITIVE_TOKENS = ("身份证", "ID_CARD", "PASSWORD", "SSN", "PHONE_NUMBER")
+
+
+def no_sensitive_fields(args: dict[str, Any]) -> str | None:
+    text = str(args).upper()
+    hits = [t for t in _SENSITIVE_TOKENS if t.upper() in text]
+    return f"参数涉及敏感字段: {hits}(no_sensitive_fields)" if hits else None
+
+
 MATCHERS: dict[str, Matcher] = {
     "sql_readonly": sql_readonly,
+    "no_sensitive_fields": no_sensitive_fields,
 }
 
 
