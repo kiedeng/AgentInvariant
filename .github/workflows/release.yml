@@ -17,6 +17,23 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Verify tag matches package version
+        # 标签、pyproject、__version__ 三者必须一致,防止把错误版本
+        # 发布到 Release / PyPI(PyPI 上传不可撤销)
+        run: |
+          python - "${GITHUB_REF_NAME#v}" <<'EOF'
+          import pathlib, re, sys, tomllib
+
+          tag = sys.argv[1]
+          pyproject = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"]
+          init = pathlib.Path("packages/core/agentinvariant/__init__.py").read_text()
+          module = re.search(r'__version__ = "([^"]+)"', init).group(1)
+          if not (tag == pyproject == module):
+              sys.exit(f"版本不一致:tag={tag} pyproject={pyproject} __version__={module}\n"
+                       "请更新 pyproject.toml 与 __init__.py 后重新打标签。")
+          print(f"版本一致:{tag}")
+          EOF
+
       - name: Build wheel and sdist
         run: |
           pip install build
