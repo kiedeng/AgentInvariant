@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentinvariant"
+version = "0.0.1"
+description = "Execution virtualization and release assurance engine for production AI agents (POC)"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2",
+    "langchain-core>=0.3",
+    "langgraph>=0.2",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["packages/core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
