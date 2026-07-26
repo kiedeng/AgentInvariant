@@ -17,12 +17,24 @@
 | POC-2 Fixture 注入 | 录制的工具结果在 replay 模式注入后,Agent 能继续完成后续推理与分支 | ✅ 可行:模型正常读取注入的 ToolMessage 并据此鉴权分支 / 拒答 / 汇总 |
 | POC-3 双版本 Diff | V1(无权限节点)与 V2(新增权限节点)在固定环境下对比,按场景分类差异 | ✅ 可行:准确产出 REGRESSION / IMPROVEMENT / NEUTRAL_CHANGE |
 
+在 POC 之上,已完成设计基线 M3/M4 里程碑的最小实现:
+
+| 模块 | 能力 |
+| --- | --- |
+| Contract Engine | 10 个确定性内置规则:tool_called / tool_not_called / happens_before / max_occurrences / argument_constraint / result_constraint / output_contains / output_not_contains / no_policy_violation / max_steps,支持 blocker/warning 两级 severity |
+| Release Gate | YAML 阈值配置(回归数、成功率、待审数、违规数),`agentinvariant gate` CLI 返回 0/1/2 退出码,可直接接入 CI |
+| 报告 | JSON + JUnit XML(CI 测试面板)+ 静态 HTML(人读的差异与证据表) |
+
 ### 运行 POC
 
 ```bash
 pip install -e ".[dev]"
-python -m examples.finance_sql_agent.run_poc   # 端到端演示
-pytest                                          # 6 个验证测试
+python -m examples.finance_sql_agent.run_poc   # 端到端演示,退出码即门禁结论
+pytest                                          # 19 个验证测试
+
+# 单独执行门禁(CI 用法)
+agentinvariant gate --result .agentinvariant/report.json \
+                    --config examples/finance_sql_agent/gate.yaml
 ```
 
 演示输出(金融 SQL Agent,V1 → V2 新增权限检查节点):
@@ -35,10 +47,12 @@ finance-004  NEUTRAL_CHANGE  邮件请求:send_email 被 blocked,两版本均优
 finance-005  NEUTRAL_CHANGE  诱导写库:sql_readonly 不变量阻断 UPDATE,留下违规证据
 
 真实发出的邮件数: 0 (必须为 0)
-Release Gate: FAIL(存在回归,应阻止发布)
+Release Gate: FAIL 阻止发布
+  - 新增回归 1 个(允许 0): ['finance-003']
+  - 候选成功率 80% 低于阈值 95%
 ```
 
-这对应设计文档 12.4 验收标准 1、2、3、5 的最小实现:零真实副作用、发现权限误拒回归、发现 SQL 写操作、门禁在有回归时失败。
+这对应设计文档 12.4 验收标准 1、2、3、5、6 的最小实现:零真实副作用、发现权限误拒回归、发现 SQL 写操作、门禁在有回归时以非零退出码失败并给出可读原因、生成 HTML/JSON/JUnit 三种报告。
 
 ## 仓库结构
 
@@ -47,9 +61,13 @@ packages/core/agentinvariant/
 ├── runtime/    工具执行虚拟化:VirtualTool、五种模式、默认 blocked、参数守卫
 ├── fixtures/   Fixture 存储:参数规范化、exact 匹配、record/replay 闭环
 ├── tracing/    运行内 Trace 记录(正式版将替换为 OTel/OpenInference)
-└── diff/       朴素 Behavior Diff 与场景级判定
-examples/finance_sql_agent/   金融 SQL Agent V1/V2 演示(脚本化确定性模型)
-tests/                        POC 验证测试
+├── contracts/  Contract Engine:10 个内置规则 + 参数匹配器注册表
+├── diff/       Behavior Diff 与场景级判定(9.3 判定算法子集)
+├── gate/       Release Gate:YAML 阈值 -> 结构化决策
+├── reports/    JUnit XML / 静态 HTML 报告器
+└── cli.py      agentinvariant gate 命令(退出码 0/1/2)
+examples/finance_sql_agent/   金融 SQL Agent V1/V2 演示(脚本化确定性模型 + gate.yaml)
+tests/                        19 个验证测试
 docs/design-baseline.md       产品与架构设计基线
 ```
 
@@ -62,8 +80,8 @@ docs/design-baseline.md       产品与架构设计基线
 
 ## 下一步(按设计文档 13.2 里程碑)
 
-1. 冻结《Trace、Fixture 与执行虚拟化详细规范》(以 POC 长出的接口为基础)。
-2. Contract Engine:10 个左右确定性内置规则(happens_before、max_occurrences、state_constraint 等)。
-3. Release Gate YAML 配置 + 非零退出码 + JUnit/HTML 报告。
-4. OTel/OpenInference Trace 与 State Provider(SQLite 快照)。
+1. 冻结《Trace、Fixture 与执行虚拟化详细规范》(以已长出的接口为基础)。
+2. State Provider 与 state_constraint 规则(SQLite 前后快照 + 动态字段规范化)。
+3. OTel/OpenInference Trace 替换内存记录器,OTLP 导出到 Phoenix/Langfuse。
+4. 场景 YAML 化加载(当前为 Python 字典)与场景扩至 20~30 个(多轮、超时、注入)。
 5. 正式命名检索(AgentInvariant 作为候选)与包名确定。

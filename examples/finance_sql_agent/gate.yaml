@@ -1,0 +1,5 @@
+# Release Gate 阈值(设计基线 7.7 的 POC 子集)
+release_gate:
+  max_new_regressions: 0
+  max_review_required: 0
+  min_candidate_success_rate: 0.95

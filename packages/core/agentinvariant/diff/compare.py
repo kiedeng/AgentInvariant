@@ -24,6 +24,7 @@ class RunResult:
     final_output: str
     recorder: TraceRecorder
     success: bool
+    contracts: list[dict[str, Any]] = None  # ContractCheck.to_dict() 列表
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -32,6 +33,7 @@ class RunResult:
             "final_output": self.final_output,
             "tool_sequence": self.recorder.tool_sequence,
             "violations": self.recorder.violations,
+            "contracts": self.contracts or [],
             "trace": self.recorder.to_dict(),
         }
 
