@@ -1,0 +1,72 @@
+name: Release
+
+# 推送 v* 标签即触发:构建 -> 冒烟验证 -> GitHub Release(附 wheel/sdist)
+# 可选 PyPI 发布:仓库 Variables 设 PYPI_PUBLISH=true 并在 PyPI 配置
+# Trusted Publisher(无需在仓库存任何凭据)后自动启用。
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel and sdist
+        run: |
+          pip install build
+          python -m build
+
+      - name: Smoke test built wheel
+        run: |
+          pip install dist/*.whl
+          agentinvariant --help
+          agentinvariant gate --help
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            变更详情见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)。
+
+  publish-pypi:
+    # 默认关闭。启用:仓库 Settings -> Secrets and variables -> Actions ->
+    # Variables 新增 PYPI_PUBLISH=true,并在 PyPI 项目设置中添加
+    # Trusted Publisher(owner/repo + workflow release.yml)。
+    if: vars.PYPI_PUBLISH == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
