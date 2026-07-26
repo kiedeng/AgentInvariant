@@ -28,6 +28,24 @@ python -m examples.finance_sql_agent.run_poc   # 端到端演示(预期退出码
 - 工具虚拟化默认安全:未声明策略的工具一律 blocked,不可逆副作用默认不得 live;
 - 内核不硬编码任何具体业务或 SaaS 服务,一切经插件接口(Adapter / StateProvider / Matcher)。
 
+## 发布流程(维护者)
+
+发版只需要一个标签,其余全自动(`.github/workflows/release.yml`):
+
+```bash
+git checkout main && git pull
+git tag -a vX.Y.Z -m "AgentInvariant vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+工作流会构建 wheel/sdist、对构建产物做 CLI 冒烟验证,并创建附带产物的
+GitHub Release。发版前请确认 `pyproject.toml` 的 version 与 CHANGELOG 已更新。
+
+可选的 PyPI 自动发布默认关闭;启用方式:在 PyPI 项目设置中添加
+Trusted Publisher(指向本仓库的 `release.yml`),再在仓库
+Settings → Actions → Variables 中设 `PYPI_PUBLISH=true`。无需在仓库
+存放任何 API Token。
+
 ## 安全问题
 
 安全漏洞请勿公开提 Issue,直接联系仓库维护者。

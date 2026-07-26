@@ -1,0 +1,89 @@
+name: Release
+
+# 推送 v* 标签即触发:构建 -> 冒烟验证 -> GitHub Release(附 wheel/sdist)
+# 可选 PyPI 发布:仓库 Variables 设 PYPI_PUBLISH=true 并在 PyPI 配置
+# Trusted Publisher(无需在仓库存任何凭据)后自动启用。
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify tag matches package version
+        # 标签、pyproject、__version__ 三者必须一致,防止把错误版本
+        # 发布到 Release / PyPI(PyPI 上传不可撤销)
+        run: |
+          python - "${GITHUB_REF_NAME#v}" <<'EOF'
+          import pathlib, re, sys, tomllib
+
+          tag = sys.argv[1]
+          pyproject = tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"]
+          init = pathlib.Path("packages/core/agentinvariant/__init__.py").read_text()
+          module = re.search(r'__version__ = "([^"]+)"', init).group(1)
+          if not (tag == pyproject == module):
+              sys.exit(f"版本不一致:tag={tag} pyproject={pyproject} __version__={module}\n"
+                       "请更新 pyproject.toml 与 __init__.py 后重新打标签。")
+          print(f"版本一致:{tag}")
+          EOF
+
+      - name: Build wheel and sdist
+        run: |
+          pip install build
+          python -m build
+
+      - name: Smoke test built wheel
+        run: |
+          pip install dist/*.whl
+          agentinvariant --help
+          agentinvariant gate --help
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            变更详情见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)。
+
+  publish-pypi:
+    # 默认关闭。启用:仓库 Settings -> Secrets and variables -> Actions ->
+    # Variables 新增 PYPI_PUBLISH=true,并在 PyPI 项目设置中添加
+    # Trusted Publisher(owner/repo + workflow release.yml)。
+    if: vars.PYPI_PUBLISH == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
