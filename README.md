@@ -155,10 +155,16 @@ tests/                        29 个测试
 - Adapter 仅 Python Callable + LangGraph(设计决策 D-06);
   `adapters.create_tool_agent` 已兼容 `langchain.agents.create_agent`(v1)
   并在其缺失时回退到 `langgraph.prebuilt`。
-- 发布到 PyPI 前需完成正式命名检索(设计决策 D-07)。
+- 命名检索(设计决策 D-07):PyPI 上 `agentinvariant` 已确认可用(2026-07);
+  商标层面的检索未做,商业化使用前请自行确认。
 
 ## 路线图
 
 见 [docs/design-baseline.md](docs/design-baseline.md) 第 13 章:
 阶段 2(开源 v0.1 文档与插件接口)→ 阶段 3(Langfuse / LangSmith / Phoenix
 双向 Adapter)→ 阶段 4(Web 平台)→ 阶段 5(Shadow 与持续回归)。
+
+## 贡献与许可
+
+贡献指南见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+本项目以 [MIT License](LICENSE) 开源。
