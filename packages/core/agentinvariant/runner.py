@@ -55,14 +55,24 @@ class ExperimentRunner:
 
     # ---- 单次运行 ----
 
-    def _invoke_with_timeout(self, fn: Callable, tools: list, scenario: dict[str, Any], timeout_s: float) -> tuple[str, bool]:
+    def _invoke_with_timeout(
+        self, fn: Callable, tools: list, scenario: dict[str, Any], timeout_s: float,
+    ) -> tuple[str, bool, str | None]:
+        """返回 (输出, 是否超时, 异常信息)。
+
+        Agent 异常在此边界捕获为失败运行:候选版本的运行时异常应作为
+        回归进入门禁,而不是中断整个比较导致无报告可用。
+        """
         # 不用 with:上下文管理器会等待卡住的线程结束,超时隔离就失效了
         pool = ThreadPoolExecutor(max_workers=1)
         future = pool.submit(fn, tools, scenario)
         try:
-            result = str(future.result(timeout=timeout_s)), False
+            result = str(future.result(timeout=timeout_s)), False, None
         except FutureTimeout:
-            result = f"[TIMEOUT] 运行超过 {timeout_s}s 被中断。", True
+            result = f"[TIMEOUT] 运行超过 {timeout_s}s 被中断。", True, None
+        except Exception as exc:  # noqa: BLE001 — CLI/报告边界,必须吞下任意 Agent 异常
+            error = f"{type(exc).__name__}: {exc}"
+            result = f"[ERROR] Agent 执行异常:{error}", False, error
         pool.shutdown(wait=False, cancel_futures=True)
         return result
 
@@ -73,10 +83,14 @@ class ExperimentRunner:
 
         state_before = None
         if self.state_provider is not None:
+            # 可选 reset 钩子:每次运行前把业务状态恢复到场景初始态,
+            # 避免 Baseline 的写入污染 Candidate 的起点(设计基线 11.1)
+            if hasattr(self.state_provider, "reset"):
+                self.state_provider.reset(scenario)
             state_before = self.state_provider.normalize(self.state_provider.snapshot(scenario))
 
         started = time.perf_counter()
-        output, timed_out = self._invoke_with_timeout(fn, tools, scenario, timeout_s)
+        output, timed_out, error = self._invoke_with_timeout(fn, tools, scenario, timeout_s)
         duration_ms = None if timed_out else (time.perf_counter() - started) * 1000
 
         state_after = None
@@ -95,12 +109,13 @@ class ExperimentRunner:
             version=version,
             final_output=output,
             recorder=recorder,
-            success=not blocker_failed(checks) and not timed_out,
+            success=not blocker_failed(checks) and not timed_out and error is None,
             contracts=[c.to_dict() for c in checks],
             duration_ms=duration_ms,
             state_before=state_before,
             state_after=state_after,
             timed_out=timed_out,
+            error=error,
         )
 
     def _run_repeated(self, fn: Callable, version: str, scenario: dict[str, Any]) -> RunResult:

@@ -54,9 +54,12 @@ def _result_as_dict(event: ToolCallEvent) -> dict[str, Any]:
     if isinstance(result, dict):
         return result
     try:
-        return json.loads(result)
+        decoded = json.loads(result)
     except (TypeError, json.JSONDecodeError):
         return {}
+    # 工具结果可能是合法 JSON 但不是对象(数组/字符串/数字/null):
+    # 按字段断言一律判失败而不是抛 AttributeError
+    return decoded if isinstance(decoded, dict) else {}
 
 
 class Rule(BaseModel):
@@ -218,7 +221,9 @@ class StateUnchanged(Rule):
         desc = "运行前后业务状态一致"
         if ctx.state_before is None or ctx.state_after is None:
             return self._check(False, desc, "未配置 StateProvider,无法取状态快照")
-        changed = [k for k in ctx.state_after if ctx.state_before.get(k) != ctx.state_after.get(k)]
+        # 取两侧键的并集:整个状态集合被删除同样是状态变化
+        keys = set(ctx.state_before) | set(ctx.state_after)
+        changed = sorted(k for k in keys if ctx.state_before.get(k) != ctx.state_after.get(k))
         return self._check(not changed, desc, f"发生变化的状态键: {changed}" if changed else "")
 
 

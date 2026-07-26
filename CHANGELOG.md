@@ -12,7 +12,12 @@
 - **LangGraph v1 兼容**:`adapters.create_tool_agent` 优先使用
   `langchain.agents.create_agent`,缺失时回退 `langgraph.prebuilt.create_react_agent`
   并抑制弃用告警。
-- 测试从 29 个扩至 37 个。
+- **健壮性修复**(PR #1 审查):Agent 运行时异常捕获为失败运行并进入门禁
+  (不再中断整个比较);`result_constraint` 对非对象 JSON 结果判失败而非崩溃;
+  `state_unchanged` 检测被删除的状态键;CLI 配置解析/校验错误统一返回
+  输入错误退出码 2;StateProvider 新增可选 `reset` 钩子(每次运行前恢复
+  业务状态,live 写场景防止 Baseline 污染 Candidate 起点)。
+- 测试从 29 个扩至 42 个。
 
 ## v0.1.0 (2026-07-26)
 

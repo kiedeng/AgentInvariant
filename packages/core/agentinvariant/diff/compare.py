@@ -31,6 +31,7 @@ class RunResult:
     repetitions: int = 1
     pass_rate: float = 1.0
     timed_out: bool = False
+    error: str | None = None  # Agent 运行时异常(已捕获为失败运行)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -39,6 +40,7 @@ class RunResult:
             "final_output": self.final_output,
             "duration_ms": round(self.duration_ms, 1) if self.duration_ms is not None else None,
             "timed_out": self.timed_out,
+            "error": self.error,
             "repetitions": self.repetitions,
             "pass_rate": self.pass_rate,
             "tool_sequence": self.recorder.tool_sequence,

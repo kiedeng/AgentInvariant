@@ -22,6 +22,12 @@ class StateProvider(Protocol):
         """移除时间戳、自增 ID 等动态字段,使快照可稳定比较。"""
         ...
 
+    # 可选钩子(定义即启用):
+    # def reset(self, scenario) -> None:
+    #     每次运行(Baseline / Candidate / 每次重复)前把业务状态恢复到
+    #     场景初始态。允许 live 写工具的场景必须实现它,否则 Baseline
+    #     的写入会污染 Candidate 的起点,状态比较失去公平性。
+
 
 class SqliteStateProvider:
     """用一组命名 SQL 查询对 SQLite 库做快照。

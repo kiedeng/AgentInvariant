@@ -19,32 +19,49 @@ from .gate import GateConfig, evaluate_gate
 
 
 def _load_project(path_str: str) -> ProjectConfig | None:
+    """加载项目配置;任何解析/校验失败都归为输入错误(退出码 2),
+    不与门禁失败(退出码 1)混淆。"""
     path = Path(path_str)
     if not path.exists():
         print(f"配置文件不存在: {path}", file=sys.stderr)
         return None
-    return ProjectConfig.from_yaml(path)
+    try:
+        return ProjectConfig.from_yaml(path)
+    except Exception as exc:  # noqa: BLE001 — CLI 输入边界
+        print(f"配置文件无效: {path}\n{exc}", file=sys.stderr)
+        return None
+
+
+def _build_runner(config: ProjectConfig):
+    """构建 Runner;入口/工具/数据集解析失败同样归为输入错误。"""
+    from .runner import ExperimentRunner
+
+    try:
+        return ExperimentRunner(config)
+    except Exception as exc:  # noqa: BLE001 — CLI 输入边界
+        print(f"项目配置解析失败:{exc}", file=sys.stderr)
+        return None
 
 
 def cmd_record(args: argparse.Namespace) -> int:
-    from .runner import ExperimentRunner
-
     config = _load_project(args.config)
     if config is None:
         return 2
-    runner = ExperimentRunner(config)
+    runner = _build_runner(config)
+    if runner is None:
+        return 2
     count = runner.record()
     print(f"record 完成:{count} 条 Fixture -> {config.path(config.fixtures)}")
     return 0
 
 
 def cmd_compare(args: argparse.Namespace) -> int:
-    from .runner import ExperimentRunner
-
     config = _load_project(args.config)
     if config is None:
         return 2
-    runner = ExperimentRunner(config)
+    runner = _build_runner(config)
+    if runner is None:
+        return 2
     report, gate_result = runner.compare()
     paths = runner.write_reports(report, gate_result)
 
