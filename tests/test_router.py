@@ -59,8 +59,8 @@ def test_record_then_replay_roundtrip(tmp_path):
 def test_fixture_key_is_arg_order_insensitive(tmp_path):
     store = FixtureStore(tmp_path / "fx.json")
     store.save("t", {"a": 1, "b": 2}, "r")
-    hit, result = store.lookup("t", {"b": 2, "a": 1})
-    assert hit and result == "r"
+    hit, result, reason = store.lookup("t", {"b": 2, "a": 1})
+    assert hit and result == "r" and reason is None
 
 
 def test_argument_guard_blocks_and_records_violation():

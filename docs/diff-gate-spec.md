@@ -94,7 +94,12 @@ agentinvariant record  --config agentinvariant.yaml   # Baseline 录制 Fixture
 agentinvariant compare --config agentinvariant.yaml \
     [--otlp-endpoint http://localhost:6006/v1/traces]  # 比较 + 报告 + 门禁
 agentinvariant gate --result .agentinvariant/report.json --config gate.yaml  # 单独复验门禁
+agentinvariant scaffold --result .agentinvariant/report.json \
+    --out contracts-draft.yaml [--side baseline]       # 从实际行为生成契约草稿
 ```
+
+`scaffold` 生成的草稿全部为 `severity: warning`,须人工审查后把关键规则
+升级为 blocker —— 草稿绝不自动成为门禁硬规则(设计基线 15.1 风险缓解)。
 
 产物目录(`output_dir`,默认 `.agentinvariant/`,建议 gitignore):
 `report.json`、`gate.json`、`junit.xml`、`report.html`、`fixtures/`。

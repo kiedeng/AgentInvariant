@@ -6,17 +6,17 @@
 
 from __future__ import annotations
 
+from agentinvariant.adapters import create_tool_agent
 from langchain_core.tools import BaseTool
-from langgraph.prebuilt import create_react_agent
 
 from .scripted_model import ScriptedFinanceModel
 
 
 def build_agent_v1(tools: list[BaseTool]):
     """V1:指标识别 -> SQL -> 回答(无权限检查)。"""
-    return create_react_agent(ScriptedFinanceModel(require_permission=False), tools)
+    return create_tool_agent(ScriptedFinanceModel(require_permission=False), tools)
 
 
 def build_agent_v2(tools: list[BaseTool]):
     """V2:指标识别 -> 权限检查 -> SQL -> 回答。"""
-    return create_react_agent(ScriptedFinanceModel(require_permission=True), tools)
+    return create_tool_agent(ScriptedFinanceModel(require_permission=True), tools)

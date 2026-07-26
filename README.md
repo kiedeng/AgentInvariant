@@ -105,6 +105,13 @@ policies:                       # 未声明的工具一律 blocked
 **4. 接入 CI**:`agentinvariant compare` 的退出码即发布决策(0 放行 / 1 阻止),
 JUnit 报告可直接进测试面板,HTML 报告供人工审查。
 
+**不想手写契约?** 先跑一次,再从实际行为生成草稿:
+
+```bash
+agentinvariant scaffold --result .agentinvariant/report.json --out contracts-draft.yaml
+# 草稿全部是 warning 级,人工确认后把关键规则升级为 blocker
+```
+
 ## 与观测平台组合
 
 本项目不替代 Langfuse / LangSmith / Phoenix,而是作为它们的下游执行保障层:
@@ -142,11 +149,12 @@ tests/                        29 个测试
 
 - 示例用**确定性脚本模型**替代真实 LLM:离线、零成本、可复现;验证的是
   截获机制与消息回路。真实 LLM 下的行为验证需要带 API Key 的集成测试。
-- Fixture 仅 exact 匹配;Schema 版本绑定、脱敏管道在路线图中。
+- Fixture 仅 exact 匹配(已含 Schema 版本绑定、过期检测与敏感字段脱敏);
+  subset/custom matcher 与静态加密在路线图中。
 - 超时隔离基于线程;进程级隔离在路线图中。
 - Adapter 仅 Python Callable + LangGraph(设计决策 D-06);
-  `create_react_agent` 在 LangGraph v1 已标记废弃,Adapter 层将兼容
-  `langchain.agents.create_agent`。
+  `adapters.create_tool_agent` 已兼容 `langchain.agents.create_agent`(v1)
+  并在其缺失时回退到 `langgraph.prebuilt`。
 - 发布到 PyPI 前需完成正式命名检索(设计决策 D-07)。
 
 ## 路线图

@@ -79,6 +79,8 @@ class ProjectConfig(BaseModel):
     tools: str
     dataset: str
     fixtures: str = ".agentinvariant/fixtures.json"
+    # 录入 Fixture 时按键名掩码的敏感字段(设计基线 7.4 脱敏要求)
+    fixture_mask_fields: list[str] = Field(default_factory=list)
     policies: dict[str, dict[str, Any]] = Field(default_factory=dict)
     state_provider: str | None = None
     gate: str | dict[str, Any] | None = None

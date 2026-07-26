@@ -86,10 +86,17 @@ tool_name:
 
 - 存储:单 JSON 文件一个 Fixture 集;键为 `tool::canonicalize(args)`;
 - 规范化:参数键排序 + 剔除 `ignore_fields`(默认 `request_id` / `trace_id` / `timestamp`);
-- 匹配:v0.1 仅 exact(规范化后全等);未命中显式报错;
-- 录制:`record` 阶段由 Baseline 真实执行产出,Baseline/Candidate 共享同一 Fixture 集,保证版本比较公平。
+- 匹配:exact(规范化后全等);未命中显式报错;
+- 录制:`record` 阶段由 Baseline 真实执行产出,Baseline/Candidate 共享同一 Fixture 集,保证版本比较公平;
+- **Schema 版本绑定**:录制时记录工具 `args_schema` 的哈希(`schema_hash`)与
+  `recorded_at` 时间戳;replay 时当前 Schema 哈希不一致 → 判 `fixture_stale`
+  过期并显式报错,提示重新 record,绝不静默匹配新参数。无 `schema_hash`
+  的旧格式 Fixture 向后兼容(不判过期);
+- **敏感字段脱敏**(项目配置 `fixture_mask_fields`):save 时按键名递归掩码
+  参数与结果中的值(`***MASKED***`);Fixture 键中的敏感字段值以
+  `sha256:` 前缀哈希代替 —— 保持确定性匹配,磁盘不落明文。
 
-**待后续版本**:Schema 版本绑定与过期检测、subset/custom matcher、字段脱敏管道。
+**待后续版本**:subset/custom matcher、静态加密。
 
 ## 4. OTLP 导出
 

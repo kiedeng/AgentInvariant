@@ -34,7 +34,10 @@ class ExperimentRunner:
         self.tools = resolve_object(config.tools)
         self.scenarios = load_dataset(config.path(config.dataset))
         self.state_provider = resolve_object(config.state_provider) if config.state_provider else None
-        self.store = FixtureStore(config.path(config.fixtures))
+        self.store = FixtureStore(
+            config.path(config.fixtures),
+            mask_fields=tuple(config.fixture_mask_fields),
+        )
 
     # ---- 策略 ----
 

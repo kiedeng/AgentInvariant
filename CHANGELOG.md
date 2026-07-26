@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.2.0 (2026-07-26)
+
+- **Fixture v2**:录制时绑定工具 args_schema 哈希与时间戳;replay 时
+  Schema 变化显式判 `fixture_stale` 过期(不静默匹配新参数),旧格式
+  向后兼容;`fixture_mask_fields` 配置敏感字段脱敏 —— 存储值掩码为
+  `***MASKED***`,Fixture 键中的敏感值以哈希代替,磁盘不落明文。
+- **契约草稿生成**:`agentinvariant scaffold --result report.json --out draft.yaml`
+  从实际行为推导 tool_called / max_occurrences / happens_before / max_steps
+  草稿;全部 warning 级,须人工确认后升级为 blocker。
+- **LangGraph v1 兼容**:`adapters.create_tool_agent` 优先使用
+  `langchain.agents.create_agent`,缺失时回退 `langgraph.prebuilt.create_react_agent`
+  并抑制弃用告警。
+- 测试从 29 个扩至 37 个。
+
 ## v0.1.0 (2026-07-26)
 
 首个可用版本:本地 CLI/SDK 垂直闭环(设计基线阶段 1 MVP Core + 部分阶段 2/3 能力)。

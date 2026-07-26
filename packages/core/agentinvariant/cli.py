@@ -71,6 +71,27 @@ def cmd_compare(args: argparse.Namespace) -> int:
     return 0 if gate_result["passed"] else 1
 
 
+def cmd_scaffold(args: argparse.Namespace) -> int:
+    import yaml
+
+    from .contracts.scaffold import DRAFT_HEADER, scaffold_from_report
+
+    result_path = Path(args.result)
+    if not result_path.exists():
+        print(f"文件不存在: {result_path}", file=sys.stderr)
+        return 2
+    report = json.loads(result_path.read_text(encoding="utf-8"))
+    draft = scaffold_from_report(report, side=args.side)
+
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    body = yaml.safe_dump(draft, allow_unicode=True, sort_keys=False)
+    out_path.write_text(DRAFT_HEADER.format(side=args.side) + body, encoding="utf-8")
+    print(f"契约草稿({len(draft)} 个场景)-> {out_path}")
+    print("请人工审查草稿:删除无关规则,把关键规则升级为 blocker。")
+    return 0
+
+
 def cmd_gate(args: argparse.Namespace) -> int:
     result_path, config_path = Path(args.result), Path(args.config)
     for p in (result_path, config_path):
@@ -100,6 +121,13 @@ def main(argv: list[str] | None = None) -> int:
     compare_cmd.add_argument("--config", required=True, help="项目配置 YAML 路径")
     compare_cmd.add_argument("--otlp-endpoint", default=None, help="OTLP HTTP Trace 端点(如 Phoenix/Langfuse)")
     compare_cmd.set_defaults(fn=cmd_compare)
+
+    scaffold_cmd = sub.add_parser("scaffold", help="从运行报告生成契约草稿(warning 级,供人工确认)")
+    scaffold_cmd.add_argument("--result", required=True, help="compare 产出的 report.json 路径")
+    scaffold_cmd.add_argument("--out", required=True, help="草稿 YAML 输出路径")
+    scaffold_cmd.add_argument("--side", default="baseline", choices=["baseline", "candidate"],
+                              help="以哪个版本的实际行为为底(默认 baseline)")
+    scaffold_cmd.set_defaults(fn=cmd_scaffold)
 
     gate_cmd = sub.add_parser("gate", help="根据已生成的报告单独执行发布门禁")
     gate_cmd.add_argument("--result", required=True, help="compare 产出的 report.json 路径")

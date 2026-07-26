@@ -18,7 +18,7 @@ from typing import Any, Callable
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
-from ..fixtures.store import FixtureStore
+from ..fixtures.store import FixtureStore, schema_hash_of
 from ..tracing.recorder import TraceRecorder
 
 
@@ -67,6 +67,7 @@ class VirtualTool(BaseTool):
     _policy: ToolPolicy = PrivateAttr()
     _recorder: TraceRecorder = PrivateAttr()
     _store: FixtureStore | None = PrivateAttr(default=None)
+    _schema_hash: str = PrivateAttr(default="")
 
     def __init__(
         self,
@@ -84,6 +85,7 @@ class VirtualTool(BaseTool):
         self._policy = policy
         self._recorder = recorder
         self._store = store
+        self._schema_hash = schema_hash_of(inner.args_schema)
 
     def _run(self, **kwargs: Any) -> str:
         policy = self._policy
@@ -113,10 +115,11 @@ class VirtualTool(BaseTool):
             if self._store is None:
                 event.error = "no fixture store configured"
                 return _to_content({"error": "replay 模式缺少 FixtureStore。"})
-            hit, result = self._store.lookup(self.name, kwargs)
+            hit, result, reason = self._store.lookup(self.name, kwargs, self._schema_hash)
             if not hit:
-                event.error = "fixture_miss"
-                return _to_content({"error": f"未找到 {self.name} 的历史 Fixture,无法回放。"})
+                event.error = reason
+                detail = "工具 Schema 已变化,Fixture 过期" if reason and reason.startswith("fixture_stale") else "未找到历史 Fixture"
+                return _to_content({"error": f"{detail},无法回放 {self.name}。"})
             event.result = result
             return _to_content(result)
 
@@ -126,7 +129,7 @@ class VirtualTool(BaseTool):
         if policy.mode is ExecutionMode.RECORD:
             if self._store is None:
                 raise RuntimeError("record 模式需要 FixtureStore")
-            self._store.save(self.name, kwargs, result)
+            self._store.save(self.name, kwargs, result, schema_hash=self._schema_hash)
         return _to_content(result)
 
 
