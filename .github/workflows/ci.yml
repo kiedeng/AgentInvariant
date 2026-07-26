@@ -45,3 +45,5 @@ jobs:
           name: behavior-diff-reports
           path: examples/finance_sql_agent/.agentinvariant/
           if-no-files-found: error
+          # 产物目录以点开头,upload-artifact v4 默认排除隐藏文件
+          include-hidden-files: true
